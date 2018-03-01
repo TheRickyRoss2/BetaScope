@@ -32,7 +32,7 @@ KEYSIGHT_BIN_TO_ROOT = KeysightBinToROOT/
 
 ########## Make exe ##########
 
-all:$(BIN)RooGetResults          \
+all:$(BIN)RooGetResults        \
 	$(BIN)getResults             \
 	$(BIN)GetTmaxPmax            \
 	$(BIN)GenerateRunlist        \
@@ -45,6 +45,7 @@ all:$(BIN)RooGetResults          \
 	$(BIN)keysightApplyBetaScope \
 	$(BIN)CFDscan_FixTrig        \
 	$(BIN)fineCFDScan_FixTrig    \
+	$(BIN)dvdtScan               \
 
 #================================================================================================
 #================================================================================================
@@ -168,7 +169,7 @@ $(BIN)fineCFDScan_FixTrig: $(fineCFDScan_FixTrig_cpp) $(getResults_dep)
 #================================================================================================
 #================================================================================================
 
-#========= jitter scan
+#========= jitter scan and temporary dvdt scan
 
 $(BUILD)$(JITTER_SCAN)createDir.o: $(SRC)$(JITTER_SCAN)$(CPP)createDir.cpp
 	$(CC) $(DEBUG) $(CFLAGS) $(ROOT_LINKS) $(ROOT_LIBS) $(ROOT_INCLUDE) $< -o $@
@@ -179,12 +180,21 @@ $(BUILD)$(JITTER_SCAN)jitterScan.o: $(SRC)$(JITTER_SCAN)$(CPP)jitterScan.cpp
 $(BUILD)$(JITTER_SCAN)processingJitterScan.o: $(SRC)$(JITTER_SCAN)$(CPP)processingJitterScan.cpp
 	$(CC) $(DEBUG) $(CFLAGS) $(ROOT_LINKS) $(ROOT_LIBS) $(ROOT_INCLUDE) $< -o $@
 
+$(BUILD)$(JITTER_SCAN)dvdtScan.o: $(SRC)$(JITTER_SCAN)$(CPP)dvdtScan.cpp
+	$(CC) $(DEBUG) $(CFLAGS) $(ROOT_LINKS) $(ROOT_LIBS) $(ROOT_INCLUDE) $< -o $@
+
 jitterScan_dep += $(BUILD)$(JITTER_SCAN)createDir.o
 jitterScan_dep += $(BUILD)$(JITTER_SCAN)jitterScan.o
 jitterScan_dep += $(BUILD)$(JITTER_SCAN)processingJitterScan.o
+jitterScan_dep += $(BUILD)$(JITTER_SCAN)dvdtScan.o
+
 
 getJitterScan_cpp := $(SRC)$(JITTER_SCAN)$(CPP)main_getJitterScan.cpp
 $(BIN)getJitterScan: $(getJitterScan_cpp) $(jitterScan_dep)
+	$(CC) $(LFLAGS) $(ROOT_LINKS) $(ROOT_LIBS) $(ROOT_INCLUDE) $^ -o $@
+
+getDvdtScan_cpp := $(SRC)$(JITTER_SCAN)$(CPP)main_getDvdtScan.cpp
+$(BIN)getDvdtScan: $(getDvdtScan_cpp) $(jitterScan_dep)
 	$(CC) $(LFLAGS) $(ROOT_LINKS) $(ROOT_LIBS) $(ROOT_INCLUDE) $^ -o $@
 
 
