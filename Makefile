@@ -45,7 +45,7 @@ all:$(BIN)RooGetResults        \
 	$(BIN)keysightApplyBetaScope \
 	$(BIN)CFDscan_FixTrig        \
 	$(BIN)fineCFDScan_FixTrig    \
-	$(BIN)dvdtScan               \
+	$(BIN)getDvdtScan            \
 
 #================================================================================================
 #================================================================================================

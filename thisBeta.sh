@@ -42,5 +42,5 @@ alias Beta_keysightApplyBetaScope=$CURRENT_PATH$PROGRAM_LOCATION$keysightApplyBe
 KeysightBinToROOT='KeysightBinToROOT'
 alias Beta_KeysightBinToROOT=$CURRENT_PATH$PROGRAM_LOCATION$keysightApplyBetaScope
 
-dvdtScan='dvdtScan'
-alias Beta_dvdtScan=$CURRENT_PATH$PROGRAM_LOCATION$dvdtScan
+getDvdtScan='getDvdtScan'
+alias Beta_getDvdtScan=$CURRENT_PATH$PROGRAM_LOCATION$getDvdtScan
