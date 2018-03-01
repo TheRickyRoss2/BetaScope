@@ -1,7 +1,7 @@
 #include "../hpp/lib.h"
 #include "../hpp/getResults.h"
 
-void GetResults(std::string RunList_wCut, bool Roo = false, bool logging = false)
+void GetResults(std::string RunList_wCut, bool logging = false)
 {
 	getData TEMP;
 
@@ -78,6 +78,5 @@ int main(int argc, const char *argv[])
 	if(argc == 1) printf("Error! Runlist Requires\n");
 	if(argc == 2) GetResults(argv[1]);
 	if(argc == 3) GetResults(argv[1], argv[2]);
-	if(argc == 4) GetResults(argv[1], argv[2], argv[3]);
 	if(argc > 4) printf("Error! Check the input arguments!");
 }

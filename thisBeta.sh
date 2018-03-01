@@ -10,7 +10,7 @@ GetTmaxPmax='GetTmaxPmax'
 alias Beta_GetTmaxPmax=$CURRENT_PATH$PROGRAM_LOCATION$GetTmaxPmax
 
 getResults='getResults'
-alias Beta_getResults=$CURRENT_PATH$PROGRAM_LOCATION$AutoResults
+alias Beta_getResults=$CURRENT_PATH$PROGRAM_LOCATION$getResults
 
 RooGetResults='RooGetResults'
 alias Beta_RooGetResults=$CURRENT_PATH$PROGRAM_LOCATION$ROOAutoResults

@@ -1,7 +1,5 @@
 #include "../hpp/getResults.h"
 
-///update: 8 7 2017----------------------------------------
-
 TCut getData::setcuts(double Dut_tmin, double Dut_tmax, double Dut_pmin, double Dut_pmax, double Trig_tmin, double Trig_tmax, double Trig_pmin, double Trig_pmax, int DUT, int Trigger)
 {
 	const char* Dut_tcut = Form("tmax%d[0] - cfd%d[20]", DUT + 1, Trigger + 1 );
@@ -30,7 +28,19 @@ TCut getData::setcuts(double Dut_tmin, double Dut_tmax, double Dut_pmin, double 
 }
 
 //(mean, mean err, binNum, range_min, range_max)
-std::tuple<double,double,int,double,double> getData::Make_Histogram(const char* path, std::string HistName, std::string expression, std::string FitFunc, TCut cuts, int Channel, int binNum, double range_min, double range_max, int draw, bool saveFile, bool Roo, bool confine)
+std::tuple<double,double,int,double,double> getData::Make_Histogram(
+	const char* path,
+	std::string HistName,
+	std::string expression,
+	std::string FitFunc,
+	TCut        cuts,
+	int         Channel,
+	int         binNum,
+	double      range_min,
+	double      range_max,
+	bool        makePlot,
+	bool        savePlot,
+	bool        confine )
 {
       TFile *loadFile = TFile::Open(path);
       TTree* loadTree = (TTree*) loadFile->Get("wfm");
@@ -87,15 +97,7 @@ std::tuple<double,double,int,double,double> getData::Make_Histogram(const char* 
       	return std::make_tuple(-1,-1, -1, -1, -1);
       }
 
-      //if(confine)
-      //{
-      //histo ->Fit(histo_fit, "Q 0 R");
-      //}
-
-      //else
-      //{
       int emptyFit = histo->Fit(histo_fit, fitOption1.c_str());
-      //}
 
       if(emptyFit)
       {
@@ -114,25 +116,23 @@ std::tuple<double,double,int,double,double> getData::Make_Histogram(const char* 
       histo-> SetDirectory(0);
 
       if(auto_adjust)
-	  {
-	  	coin_events = histo->GetEntries();
+			{
+		  	coin_events = histo->GetEntries();
 
-	  	if (FitFunc.compare("landau") == 0)
-     	{
-      		range_min= histo_fit->GetParameter(1) - landau_left * histo_fit->GetParameter(2);
-      		range_max = histo_fit->GetParameter(1) + landau_right * histo_fit->GetParameter(2);
-      }
+		  	if (FitFunc.compare("landau") == 0)
+	     	{
+	      		range_min= histo_fit->GetParameter(1) - landau_left * histo_fit->GetParameter(2);
+	      		range_max = histo_fit->GetParameter(1) + landau_right * histo_fit->GetParameter(2);
+	      }
 
-      	if (FitFunc.compare("gaus") == 0)
-      	{
-      		double FD_width = 2.0 * 1.35 * histo->GetStdDev() * std::pow( coin_events, -1.0/3.0 );
-      		//binNum = sqrt(coin_events);
-      		range_min= histo_fit->GetParameter(1) - 5 * histo_fit->GetParameter(2);
-      		range_max = histo_fit->GetParameter(1) + 5 * histo_fit->GetParameter(2);
-      		binNum = (range_max - range_min)/FD_width;
-      	}
-
-
+	      	if (FitFunc.compare("gaus") == 0)
+	      	{
+	      		double FD_width = 2.0 * 1.35 * histo->GetStdDev() * std::pow( coin_events, -1.0/3.0 );
+	      		//binNum = sqrt(coin_events);
+	      		range_min= histo_fit->GetParameter(1) - 5 * histo_fit->GetParameter(2);
+	      		range_max = histo_fit->GetParameter(1) + 5 * histo_fit->GetParameter(2);
+	      		binNum = (range_max - range_min)/FD_width;
+	      	}
       }
 
       double Par = histo_fit->GetParameter(1);
@@ -141,13 +141,13 @@ std::tuple<double,double,int,double,double> getData::Make_Histogram(const char* 
 
       TCanvas *oCanvas = new TCanvas;
 
-      if(draw)
+      if( makePlot )
       {
       	oCanvas = new TCanvas( Form("%s%d_canvas", HistName.c_str(), Channel+1) );
 
       	oCanvas->cd();
 
-      	if (saveFile)
+      	if( savePlot )
       	{
       		histo ->Fit(histo_fit, fitOption2.c_str());
       		gStyle->SetOptFit(1);
@@ -161,7 +161,6 @@ std::tuple<double,double,int,double,double> getData::Make_Histogram(const char* 
       		delete histo;
       		delete oCanvas;
       	}
-
       	else
       	{
       		histo ->Fit(histo_fit, fitOption2.c_str());
@@ -199,17 +198,18 @@ void getData::pulses(const char* path, TCut cuts, int DUT, int Trigger, int draw
 	}
 }
 
-void getData::processHistogram(const char* path,
-	                            double Dut_tmin,
-															double Dut_tmax,
-															double Dut_pmin,
-															double Dut_pmax,
-															double Trig_tmin,
-															double Trig_tmax,
-															double Trig_pmin,
-															double Trig_pmax,
-															bool saveFile,
-															bool logging )
+void getData::processHistogram(
+	const char* path,
+	double Dut_tmin,
+	double Dut_tmax,
+	double Dut_pmin,
+	double Dut_pmax,
+	double Trig_tmin,
+	double Trig_tmax,
+	double Trig_pmin,
+	double Trig_pmax,
+	bool saveResult,
+	bool logging )
 {
 	gROOT->Reset();
 
@@ -219,38 +219,46 @@ void getData::processHistogram(const char* path,
 
 	current_file = path;
 
-	std::map<std::string,std::pair<double,double>> oData_dut;
-	std::map<std::string,std::pair<double,double>> oData_trig;
+	std::map<std::string,std::pair<double,double>> oData[2] = {};
 
 	int fineAdjustmentTime = 0;
 
-	for( int i = 0; i < this->plotArg[0].size(); i++ )
+	for( int ch = 0; ch < 2; ch++ ) //dut first and then trigger
 	{
-		double par;
-		double par_err;
-
-		std::tuple<int,double,double> fitAdjust = {this->ini_bin, this->ini_rangeMin, this->ini_rangeMin};
-
-		if( i == 3 )
+		for( int i = 0; i < this->plotArg[ch].size(); i++ )
 		{
-			std::string plotName = this->plotArg[0].at(i).at(0);
+			double par;
+			double par_err;
+			int whichCh;
 
-			while( fineAdjustmentTime < 5 )
+			if( ch == 0 ) whichCh = this->DUT;
+			else whichCh = this->Trigger;
+
+			std::string plotName = this->plotArg[ch].at(i).at(0);
+
+			std::tuple<int,double,double> fitAdjust = {this->ini_bin, this->ini_rangeMin, this->ini_rangeMin};
+
+			bool confineRise;
+
+			if( (ch == 0) && (plotName.compare("Rise Time") == 0) ){ confineRise = true; }
+			else{ confineRise = false; }
+
+			while( fineAdjustmentTime < (this->recursionNum) )
 			{
 				std::tuple<double,double,int,double,double> temp =
-					getData::Make_Histogram(path,
-					                        this->plotArg[0].at(i).at(0),
-					                        this->plotArg[0].at(i).at(1),
-					                        this->plotArg[0].at(i).at(2),
-					                        temp_cuts,
-					                        DUT,
-																	std::get<0>(fitAdjust),
-																	std::get<1>(fitAdjust),
-																	std::get<2>(fitAdjust),
-					                        0,
-					                        false,
-					                        false,
-					                        true);
+				getData::Make_Histogram(
+						path,
+						this->plotArg[ch].at(i).at(0),
+						this->plotArg[ch].at(i).at(1),
+						this->plotArg[ch].at(i).at(2),
+						temp_cuts,
+						whichCh,
+						std::get<0>(fitAdjust),
+						std::get<1>(fitAdjust),
+						std::get<2>(fitAdjust),
+						false,
+						false,
+						confineRise );
 
 				std::get<0>(fitAdjust) = std::get<2>(temp);
 				std::get<1>(fitAdjust) = std::get<3>(temp);
@@ -259,140 +267,30 @@ void getData::processHistogram(const char* path,
 				fineAdjustmentTime ++;
 			}
 
-			std::tuple<double,double,int,double,double> out_tuple = getData::Make_Histogram(
-																																	path,
-																																	this->plotArg[0].at(i).at(0),
-																																	this->plotArg[0].at(i).at(1),
-																																	this->plotArg[0].at(i).at(2),
-																																	temp_cuts,
-																																	DUT,
-																																	std::get<0>(fitAdjust),
-																																	std::get<1>(fitAdjust),
-																																	std::get<2>(fitAdjust),
-																																	1,
-																																	true,
-																																	false,
-																																	true );
+			std::tuple<double,double,int,double,double> out_tuple =
+				getData::Make_Histogram(
+				path,
+				this->plotArg[ch].at(i).at(0),
+				this->plotArg[ch].at(i).at(1),
+				this->plotArg[ch].at(i).at(2),
+				temp_cuts,
+				whichCh,
+				std::get<0>(fitAdjust),
+				std::get<1>(fitAdjust),
+				std::get<2>(fitAdjust),
+				true,
+				true,
+				confineRise );
 
-				par = std::get<0>(out_tuple);
-				par_err = std::get<1>(out_tuple);
-
-			fineAdjustmentTime = 0;
-
-			std::pair<double,double> output = std::make_pair( par, par_err );
-
-			oData_dut.insert( std::pair<std::string,std::pair<double,double>>( plotName, output ) );
-		}
-		else
-		{
-			std::string plotName = this->plotArg[0].at(i).at(0);
-
-			while( fineAdjustmentTime < 5 )
-			{
-				std::tuple<double,double,int,double,double> temp =
-					getData::Make_Histogram(path,
-																	this->plotArg[0].at(i).at(0),
-																	this->plotArg[0].at(i).at(1),
-																	this->plotArg[0].at(i).at(2),
-																	temp_cuts,
-																	DUT,
-																	std::get<0>(fitAdjust),
-																	std::get<1>(fitAdjust),
-																	std::get<2>(fitAdjust),
-																	0,
-																	false,
-																	false,
-																  false);
-
-				std::get<0>(fitAdjust) = std::get<2>(temp);
-				std::get<1>(fitAdjust) = std::get<3>(temp);
-				std::get<2>(fitAdjust) = std::get<4>(temp);
-
-				fineAdjustmentTime ++;
-			}
-
-			std::tuple<double,double,int,double,double> out_tuple = getData::Make_Histogram(
-																																	path,
-																																	this->plotArg[0].at(i).at(0),
-																																	this->plotArg[0].at(i).at(1),
-																																	this->plotArg[0].at(i).at(2),
-																																	temp_cuts,
-																																	DUT,
-																																	std::get<0>(fitAdjust),
-																																	std::get<1>(fitAdjust),
-																																	std::get<2>(fitAdjust),
-																																	1,
-																																	true,
-																																	false,
-																																	false );
-
-				par = std::get<0>(out_tuple);
-				par_err = std::get<1>(out_tuple);
-
-			fineAdjustmentTime = 0;
-
-			std::pair<double,double> output = std::make_pair( par, par_err );
-
-			oData_dut.insert( std::pair<std::string,std::pair<double,double>>( plotName, output ) );
-		}
-	}
-
-	for( int i = 0; i < this->plotArg[1].size(); i++ )
-	{
-		double par;
-		double par_err;
-
-		std::string plotName = this->plotArg[1].at(i).at(0);
-
-		std::tuple<int,double,double> fitAdjust = {this->ini_bin, this->ini_rangeMin, this->ini_rangeMin};
-
-		while( fineAdjustmentTime < 5 )
-		{
-			std::tuple<double,double,int,double,double> temp =
-				getData::Make_Histogram(path,
-																this->plotArg[1].at(i).at(0),
-																this->plotArg[1].at(i).at(1),
-																this->plotArg[1].at(i).at(2),
-																temp_cuts,
-																Trigger,
-																std::get<0>(fitAdjust),
-																std::get<1>(fitAdjust),
-																std::get<2>(fitAdjust),
-																0,
-																false,
-																false,
-															  false);
-
-			std::get<0>(fitAdjust) = std::get<2>(temp);
-			std::get<1>(fitAdjust) = std::get<3>(temp);
-			std::get<2>(fitAdjust) = std::get<4>(temp);
-
-			fineAdjustmentTime ++;
-		}
-		
-		std::tuple<double,double,int,double,double> out_tuple = getData::Make_Histogram(
-																																path,
-																																this->plotArg[1].at(i).at(0),
-																																this->plotArg[1].at(i).at(1),
-																																this->plotArg[1].at(i).at(2),
-																																temp_cuts,
-																																Trigger,
-																																std::get<0>(fitAdjust),
-																																std::get<1>(fitAdjust),
-																																std::get<2>(fitAdjust),
-																																1,
-																																true,
-																																false,
-																																false );
-
-			par = std::get<0>(out_tuple);
+			par     = std::get<0>(out_tuple);
 			par_err = std::get<1>(out_tuple);
 
-		fineAdjustmentTime = 0;
+			fineAdjustmentTime = 0;
 
-		std::pair<double,double> output = std::make_pair( par, par_err );
+			std::pair<double,double> output = std::make_pair( par, par_err );
 
-		oData_trig.insert( std::pair<std::string,std::pair<double,double>>( plotName, output ) );
+			oData[ch].insert( std::pair<std::string,std::pair<double,double>>( plotName, output ) );
+		}
 	}
 
 	if(logging)
@@ -400,28 +298,28 @@ void getData::processHistogram(const char* path,
 		std::cout << "-------------" << Form("ch%d", this->DUT+1) <<"------------------"<< std::endl;
 
 		std::cout << "PulseArea2" << ",,,,,,," << "pmax2" << "," << "rms2" << ",,,,," << "rise2_1090" << "," << "dvdt2" << ",,,,,,,,," << " FWHM2" << std::endl;
-		std::cout << oData_dut["PulseArea"].first <<", "<< oData_dut["PulseArea"].second << ",,,,,,,"
-				      << oData_dut["Pmax"].first      <<", "<< oData_dut["Pmax"].second      << ","
-				      << oData_dut["RMS"].first       <<", "<< oData_dut["RMS"].second       << ",,,,,"
-	 			      << oData_dut["Rise Time"].first <<", "<< oData_dut["Rise Time"].second << ","
-				      << oData_dut["dvdt"].first      <<", "<< oData_dut["dvdt"].second      << ",,,,,,,,,"
-				      << oData_dut["FWHM"].first      <<", "<< oData_dut["FWHM"].second      << std::endl;
+		std::cout << oData[0]["PulseArea"].first <<", "<< oData[0]["PulseArea"].second << ",,,,,,,"
+				      << oData[0]["Pmax"].first      <<", "<< oData[0]["Pmax"].second      << ","
+				      << oData[0]["RMS"].first       <<", "<< oData[0]["RMS"].second       << ",,,,,"
+	 			      << oData[0]["Rise Time"].first <<", "<< oData[0]["Rise Time"].second << ","
+				      << oData[0]["dvdt"].first      <<", "<< oData[0]["dvdt"].second      << ",,,,,,,,,"
+				      << oData[0]["FWHM"].first      <<", "<< oData[0]["FWHM"].second      << std::endl;
 
 		std::cout << "-------------" << Form("ch%d", this->Trigger+1) <<"------------------"<< std::endl;
 
 		std::cout << "charPulseArea3" << ",,,,,,," << "pmax3" << "," << "rms3" << ",,,,," << "rise3_1090" << "," << "dvdt3" << ",,,,,,,,," << " FWHM3" << std::endl;
-		std::cout << oData_trig["PulseArea"].first <<", "<< oData_trig["PulseArea"].second << ",,,,,,,"
-				      << oData_trig["Pmax"].first      <<", "<< oData_trig["Pmax"].second      << ","
-				      << oData_trig["RMS"].first       <<", "<< oData_trig["RMS"].second       << ",,,,,"
-	 			      << oData_trig["Rise Time"].first <<", "<< oData_trig["Rise Time"].second << ","
-				      << oData_trig["dvdt"].first      <<", "<< oData_trig["dvdt"].second      << ",,,,,,,,,"
-				      << oData_trig["FWHM"].first      <<", "<< oData_trig["FWHM"].second      << std::endl;
+		std::cout << oData[1]["PulseArea"].first <<", "<< oData[1]["PulseArea"].second << ",,,,,,,"
+				      << oData[1]["Pmax"].first      <<", "<< oData[1]["Pmax"].second      << ","
+				      << oData[1]["RMS"].first       <<", "<< oData[1]["RMS"].second       << ",,,,,"
+	 			      << oData[1]["Rise Time"].first <<", "<< oData[1]["Rise Time"].second << ","
+				      << oData[1]["dvdt"].first      <<", "<< oData[1]["dvdt"].second      << ",,,,,,,,,"
+				      << oData[1]["FWHM"].first      <<", "<< oData[1]["FWHM"].second      << std::endl;
 
 		std::cout << std::endl;
 		std::cout << std::endl;
 	}
 
-	if(saveFile)
+	if( saveResult )
 	{
 		std::ofstream ofile;
 
@@ -429,31 +327,30 @@ void getData::processHistogram(const char* path,
 
 		ofile.open ( "_results.txt", std::ios::app);
 
-		ofile << "-------------" << Form("ch%d", this->DUT+1) <<"------------------"<< std::endl;
+		ofile << "-------------" << Form("%s_ch%d", prefix.c_str(), DUT+1) <<"------------------"<< std::endl;
+		ofile << Dut_tmin << ", " << Dut_tmax << ", " << Dut_pmin << ", " << Dut_pmax << ", " << Trig_tmin << ", " << Trig_tmax << ", " << Trig_pmin << ", " << Trig_pmax << std::endl;
 
 		ofile << "charge2" << ",,,,,,," << "pmax2" << "," << "rms2" << ",,,,," << "rise2_1090" << "," << "dvdt2" << ",,,,,,,,," << " FWHM2" << std::endl;
-		ofile << oData_dut["PulseArea"].first <<", "<< oData_dut["PulseArea"].second << ",,,,,,,"
-				      << oData_dut["Pmax"].first      <<", "<< oData_dut["Pmax"].second      << ","
-				      << oData_dut["RMS"].first       <<", "<< oData_dut["RMS"].second       << ",,,,,"
-	 			      << oData_dut["Rise Time"].first <<", "<< oData_dut["Rise Time"].second << ","
-				      << oData_dut["dvdt"].first      <<", "<< oData_dut["dvdt"].second      << ",,,,,,,,,"
-				      << oData_dut["FWHM"].first      <<", "<< oData_dut["FWHM"].second      << std::endl;
+		ofile     << oData[0]["PulseArea"].first <<", "<< oData[0]["PulseArea"].second << ",,,,,,,"
+				      << oData[0]["Pmax"].first      <<", "<< oData[0]["Pmax"].second      << ","
+				      << oData[0]["RMS"].first       <<", "<< oData[0]["RMS"].second       << ",,,,,"
+	 			      << oData[0]["Rise Time"].first <<", "<< oData[0]["Rise Time"].second << ","
+				      << oData[0]["dvdt"].first      <<", "<< oData[0]["dvdt"].second      << ",,,,,,,,,"
+				      << oData[0]["FWHM"].first      <<", "<< oData[0]["FWHM"].second      << std::endl;
 
-		ofile << "-------------" << Form("ch%d", this->Trigger+1) <<"------------------"<< std::endl;
+		ofile << "-------------" << Form("%s_ch%d", prefix.c_str(), Trigger+1) <<"------------------"<< std::endl;
 
 		ofile << "charge3" << ",,,,,,," << "pmax3" << "," << "rms3" << ",,,,," << "rise3_1090" << "," << "dvdt3" << ",,,,,,,,," << " FWHM3" << std::endl;
-		ofile << oData_trig["PulseArea"].first <<", "<< oData_trig["PulseArea"].second << ",,,,,,,"
-				      << oData_trig["Pmax"].first      <<", "<< oData_trig["Pmax"].second      << ","
-				      << oData_trig["RMS"].first       <<", "<< oData_trig["RMS"].second       << ",,,,,"
-	 			      << oData_trig["Rise Time"].first <<", "<< oData_trig["Rise Time"].second << ","
-				      << oData_trig["dvdt"].first      <<", "<< oData_trig["dvdt"].second      << ",,,,,,,,,"
-				      << oData_trig["FWHM"].first      <<", "<< oData_trig["FWHM"].second      << std::endl;
+		ofile     << oData[1]["PulseArea"].first <<", "<< oData[1]["PulseArea"].second << ",,,,,,,"
+				      << oData[1]["Pmax"].first      <<", "<< oData[1]["Pmax"].second      << ","
+				      << oData[1]["RMS"].first       <<", "<< oData[1]["RMS"].second       << ",,,,,"
+	 			      << oData[1]["Rise Time"].first <<", "<< oData[1]["Rise Time"].second << ","
+				      << oData[1]["dvdt"].first      <<", "<< oData[1]["dvdt"].second      << ",,,,,,,,,"
+				      << oData[1]["FWHM"].first      <<", "<< oData[1]["FWHM"].second      << std::endl;
 
 		ofile << std::endl;
 		ofile << std::endl;
 	}
-
-
 	else
 	{}
 }

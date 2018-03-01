@@ -16,7 +16,7 @@ class getData
 
 	double tmax_min, tmax_max, pmax_min, pmax_max;
 
-	int    ini_bin = 100;
+	int    ini_bin = 60;
 	double ini_rangeMin = 1;
 	double ini_rangeMax = 1;
 
@@ -88,9 +88,8 @@ class getData
 			int         binNum,
 			double      range_min,
 			double      range_max,
-			int         draw     = 1,
-			bool        saveFile = false,
-			bool        Roo      = false,
+			bool        makePlot = true,
+			bool        savePlot = false,
 			bool        confine  = false
 		);
 
@@ -104,16 +103,16 @@ class getData
 
 		void processHistogram(
 			const char* path,
-			double Dut_tmin,
-			double Dut_tmax,
-			double Dut_pmin,
-			double Dut_pmax,
-			double Trig_tmin,
-			double Trig_tmax,
-			double Trig_pmin,
-			double Trig_pmax,
-			bool saveFile = false,
-			bool logging  = true
+			double      Dut_tmin,
+			double      Dut_tmax,
+			double      Dut_pmin,
+			double      Dut_pmax,
+			double      Trig_tmin,
+			double      Trig_tmax,
+			double      Trig_pmin,
+			double      Trig_pmax,
+			bool        saveResult = false,
+			bool        logging  = true
 		);
 
 		void see_status ();
